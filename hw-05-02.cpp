@@ -7,22 +7,28 @@ int main() {
 	double bet = 0.05;
 	double x = a;
 	const double eps = 0.001;
-//	std::cout << " x" << " " << "|" << " " << "s(x)" << " " << "|" << " " << "f(x)" << std::endl;
+	std::cout << " x" << " " << "|" << " " << "s(x)" << " " << "|" << " " << "f(x)" << std::endl;
 	double s = 0.0;
 	double y;
 	double s_i = 1.0;
 	int i = 1;
-	double pres = 1.0;
 	while (x <= b) {
-		s_i = pow(x, i) * sin(i * M_PI / 4);
-		pres = s;
-		s = s + s_i;
-		y = (x * sin(M_PI / 4)) / (1 - 2 * x * cos(M_PI / 4));
+		while (s_i > eps) {
+			s_i = pow(x, i) * sin(i * (M_PI / 4));
+			s = s + s_i;
+			y = (x * sin(M_PI / 4)) / (1 - 2 * x * cos(M_PI / 4));
+			i += 1;
+			if (s_i == 0) {
+				s_i = 1.0;
+			}
+			if (i == 1000) {
+				break;
+			}
+		}
 		std::cout << x << " " << "|" << " " << s << " " << "|" << " " << y << std::endl;
 		x += bet;
-		if (i != 1 && abs(s_i) <= eps) {
-			break;
-		} 
-		i += 1;
+		i = 1;
+		s_i = 1.0;
+		s = 0.0;
 	}
 }
