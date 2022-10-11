@@ -13,6 +13,9 @@ int main() {
 		int b = 0;
 		int flagg;
 		flagg = 1;
+		if (n == 1) {
+			flagg = 0;
+		}
 		for (int i = 0; i < n; ++i) {
 			if (c[i] == 'a') {
 				if (b % 2 != 0) {
@@ -45,6 +48,9 @@ int main() {
 			}
 			
 		} 
+		if (a == 1 || b == 1) {
+		    flagg = 0;
+		}
 		if (flagg == 1) {
 			std::cout << "YES" << std::endl;
 		}
