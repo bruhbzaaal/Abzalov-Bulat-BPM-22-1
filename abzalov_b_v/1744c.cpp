@@ -13,24 +13,35 @@ int main() {
 		std::cin >> n >> c;
 		std::string s;
 		std::cin >> s;
+		std::string s2;
+		s2 = s + s;
 		int sum = 0;
+		int step = 0;
 		int max = 0;
-		for (int i = 0; i < n; ++i) {
+		int i = 0;
+		while (i < n) {
 			if (s[i] == c) {
 				for (int j = i; j < 2 * n; ++j) {
-					j = j % n;
-					sum += 1;
-					if (s[j] == 'g') {
+					if (s2[j] == 'g') {
 						break;
 					}
-				}
-				if (sum > max) {
-					max = sum;
+					sum += 1;
+					if (sum > max) {
+						max = sum;
+					}
+					step = sum;
 				}
 				sum = 0;
 			}
+			if (step == 0) {
+				i += 1;
+			}
+			else {
+				i += step;
+				step = 0;
+			}
 		}
-		std::cout << max - 1 << std::endl;
+		std::cout << max << std::endl; 
  
-	}
+	} 
 }
