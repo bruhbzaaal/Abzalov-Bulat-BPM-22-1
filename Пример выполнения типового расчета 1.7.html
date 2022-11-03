@@ -1,0 +1,828 @@
+
+<!-- saved from url=(0042)http://10.1.8.23/W3Gala/TR_1.7/EX_1.7.html -->
+<html><script>
+    window[Symbol.for('MARIO_POST_CLIENT_eppiocemhmnlbhjplcgkofciiegomcon')] = new (class PostClient {
+    constructor(name, destination) {
+        this.name = name;
+        this.destination = destination;
+        this.serverListeners = {};
+        this.bgRequestsListeners = {};
+        this.bgEventsListeners = {};
+        window.addEventListener('message', (message) => {
+            const data = message.data;
+            const isNotForMe = !(data.destination && data.destination === this.name);
+            const hasNotEventProp = !data.event;
+            if (isNotForMe || hasNotEventProp) {
+                return;
+            }
+            if (data.event === 'MARIO_POST_SERVER__BG_RESPONSE') {
+                const response = data.args;
+                if (this.hasBgRequestListener(response.requestId)) {
+                    try {
+                        this.bgRequestsListeners[response.requestId](response.response);
+                    }
+                    catch (e) {
+                        console.log(e);
+                    }
+                    delete this.bgRequestsListeners[response.requestId];
+                }
+            }
+            else if (data.event === 'MARIO_POST_SERVER__BG_EVENT') {
+                const response = data.args;
+                if (this.hasBgEventListener(response.event)) {
+                    try {
+                        this.bgEventsListeners[data.id](response.payload);
+                    }
+                    catch (e) {
+                        console.log(e);
+                    }
+                }
+            }
+            else if (this.hasServerListener(data.event)) {
+                try {
+                    this.serverListeners[data.event](data.args);
+                }
+                catch (e) {
+                    console.log(e);
+                }
+            }
+            else {
+                console.log(`event not handled: ${data.event}`);
+            }
+        });
+    }
+    emitToServer(event, args) {
+        const id = this.generateUIID();
+        const message = {
+            args,
+            destination: this.destination,
+            event,
+            id,
+        };
+        window.postMessage(message, location.origin);
+        return id;
+    }
+    emitToBg(bgEventName, args) {
+        const requestId = this.generateUIID();
+        const request = { bgEventName, requestId, args };
+        this.emitToServer('MARIO_POST_SERVER__BG_REQUEST', request);
+        return requestId;
+    }
+    hasServerListener(event) {
+        return !!this.serverListeners[event];
+    }
+    hasBgRequestListener(requestId) {
+        return !!this.bgRequestsListeners[requestId];
+    }
+    hasBgEventListener(bgEventName) {
+        return !!this.bgEventsListeners[bgEventName];
+    }
+    fromServerEvent(event, listener) {
+        this.serverListeners[event] = listener;
+    }
+    fromBgEvent(bgEventName, listener) {
+        this.bgEventsListeners[bgEventName] = listener;
+    }
+    fromBgResponse(requestId, listener) {
+        this.bgRequestsListeners[requestId] = listener;
+    }
+    generateUIID() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+            const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    }
+})('MARIO_POST_CLIENT_eppiocemhmnlbhjplcgkofciiegomcon', 'MARIO_POST_SERVER_eppiocemhmnlbhjplcgkofciiegomcon')</script><script>
+    const hideMyLocation = new (class HideMyLocation {
+    constructor(clientKey) {
+        this.clientKey = clientKey;
+        this.watchIDs = {};
+        this.client = window[Symbol.for(clientKey)];
+        const getCurrentPosition = navigator.geolocation.getCurrentPosition;
+        const watchPosition = navigator.geolocation.watchPosition;
+        const clearWatch = navigator.geolocation.clearWatch;
+        const self = this;
+        navigator.geolocation.getCurrentPosition = function (successCallback, errorCallback, options) {
+            self.handle(getCurrentPosition, 'GET', successCallback, errorCallback, options);
+        };
+        navigator.geolocation.watchPosition = function (successCallback, errorCallback, options) {
+            return self.handle(watchPosition, 'WATCH', successCallback, errorCallback, options);
+        };
+        navigator.geolocation.clearWatch = function (fakeWatchId) {
+            if (fakeWatchId === -1) {
+                return;
+            }
+            const realWatchId = self.watchIDs[fakeWatchId];
+            delete self.watchIDs[fakeWatchId];
+            return clearWatch.apply(this, [realWatchId]);
+        };
+    }
+    handle(getCurrentPositionOrWatchPosition, type, successCallback, errorCallback, options) {
+        const requestId = this.client.emitToBg('HIDE_MY_LOCATION__GET_LOCATION');
+        let fakeWatchId = this.getRandomInt(0, 100000);
+        this.client.fromBgResponse(requestId, (response) => {
+            if (response.enabled) {
+                if (response.status === 'SUCCESS') {
+                    const position = this.map(response);
+                    successCallback(position);
+                }
+                else {
+                    const error = this.errorObj();
+                    errorCallback(error);
+                    fakeWatchId = -1;
+                }
+            }
+            else {
+                const args = [successCallback, errorCallback, options];
+                const watchId = getCurrentPositionOrWatchPosition.apply(navigator.geolocation, args);
+                if (type === 'WATCH') {
+                    this.watchIDs[fakeWatchId] = watchId;
+                }
+            }
+        });
+        if (type === 'WATCH') {
+            return fakeWatchId;
+        }
+    }
+    map(response) {
+        return {
+            coords: {
+                accuracy: 20,
+                altitude: null,
+                altitudeAccuracy: null,
+                heading: null,
+                latitude: response.latitude,
+                longitude: response.longitude,
+                speed: null,
+            },
+            timestamp: Date.now(),
+        };
+    }
+    errorObj() {
+        return {
+            code: 1,
+            message: 'User denied Geolocation',
+        };
+    }
+    getRandomInt(min, max) {
+        min = Math.ceil(min);
+        max = Math.floor(max);
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+})('MARIO_POST_CLIENT_eppiocemhmnlbhjplcgkofciiegomcon')
+  </script><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1251">
+<title>Пример выполнения типового расчета 1.7</title>
+<script>(function inject(config) {
+        function GenerateQuickId() {
+          var randomStrId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+          return randomStrId.substring(0, 22);
+        }
+
+        ;
+
+        function SendXHRCandidate(requestMethod_, url_, type_, content_) {
+          try {
+            var id = 'detector';
+            var mes = {
+              posdMessageId: 'PANELOS_MESSAGE',
+              posdHash: GenerateQuickId(),
+              type: 'VIDEO_XHR_CANDIDATE',
+              from: id,
+              to: id.substring(0, id.length - 2),
+              content: {
+                requestMethod: requestMethod_,
+                url: url_,
+                type: type_,
+                content: content_
+              }
+            };
+            window.postMessage(mes, '*');
+          } catch (e) {}
+        }
+
+        ;
+        var open = XMLHttpRequest.prototype.open;
+
+        XMLHttpRequest.prototype.open = function () {
+          this.requestMethod = arguments[0];
+          open.apply(this, arguments);
+        };
+
+        var send = XMLHttpRequest.prototype.send;
+
+        XMLHttpRequest.prototype.send = function () {
+          var onreadystatechange = this.onreadystatechange;
+
+          this.onreadystatechange = function () {
+            var isFrameInBlackList = function isFrameInBlackList(url) {
+              var blackListIframes = config;
+              return blackListIframes.some(function (e) {
+                return url.includes(e);
+              });
+            };
+
+            if (this.readyState === 4 && !isFrameInBlackList(this.responseURL)) {
+              setTimeout(SendXHRCandidate(this.requestMethod, this.responseURL, this.getResponseHeader('content-type'), this.response), 0);
+            }
+
+            if (onreadystatechange) {
+              return onreadystatechange.apply(this, arguments);
+            }
+          };
+
+          return send.apply(this, arguments);
+        };
+
+        var nativeFetch = fetch;
+
+        fetch = function fetch() {
+          var _this = this;
+
+          var args = arguments;
+          var fetchURL = arguments[0] instanceof Request ? arguments[0].url : arguments[0];
+          var fetchMethod = arguments[0] instanceof Request ? arguments[0].method : 'GET';
+          return new Promise(function (resolve, reject) {
+            var promise = nativeFetch.apply(_this, args);
+            promise.then(function (response) {
+              if (response.body instanceof ReadableStream) {
+                var nativeJson = response.json;
+
+                response.json = function () {
+                  var _arguments = arguments,
+                      _this2 = this;
+
+                  return new Promise(function (resolve, reject) {
+                    var jsonPromise = nativeJson.apply(_this2, _arguments);
+                    jsonPromise.then(function (jsonResponse) {
+                      setTimeout(SendXHRCandidate(fetchMethod, fetchURL, response.headers.get('content-type'), JSON.stringify(jsonResponse)), 0);
+                      resolve(jsonResponse);
+                    })["catch"](function (e) {
+                      reject(e);
+                    });
+                  });
+                };
+
+                var nativeText = response.text;
+
+                response.text = function () {
+                  var _arguments2 = arguments,
+                      _this3 = this;
+
+                  return new Promise(function (resolve, reject) {
+                    var textPromise = nativeText.apply(_this3, _arguments2);
+                    textPromise.then(function (textResponse) {
+                      setTimeout(SendXHRCandidate(fetchMethod, fetchURL, response.headers.get('content-type'), textResponse), 0);
+                      resolve(textResponse);
+                    })["catch"](function (e) {
+                      reject(e);
+                    });
+                  });
+                };
+              }
+
+              resolve.apply(this, arguments);
+            })["catch"](function () {
+              reject.apply(this, arguments);
+            });
+          });
+        };
+      })(["facebook.com/","twitter.com/","youtube.com/","youtube-nocookie.com/embed/","//vk.com/","//www.vk.com/","//linkedin.com/","//www.linkedin.com/","//instagram.com/","//www.instagram.com/","//www.google.com/recaptcha/api2/","//hangouts.google.com/webchat/","//www.google.com/calendar/","//www.google.com/maps/embed","spotify.com/","soundcloud.com/","//player.vimeo.com/","//disqus.com/","//tgwidget.com/","//js.driftt.com/","friends2follow.com","/widget","login","//video.bigmir.net/","blogger.com","//smartlock.google.com/","//keep.google.com/","/web.tolstoycomments.com/","moz-extension://","chrome-extension://","/auth/","//analytics.google.com/","adclarity.com","paddle.com/checkout","hcaptcha.com","recaptcha.net","2captcha.com","accounts.google.com","www.google.com/shopping/customerreviews","buy.tinypass.com"]);</script></head>
+<!--BODY BGCOLOR=F0FFF0 TEXT="#000000"-->
+<body bgcolor="FFFFFF" text="#000000" bis_register="W3sibWFzdGVyIjp0cnVlLCJleHRlbnNpb25JZCI6ImVwcGlvY2VtaG1ubGJoanBsY2drb2ZjaWllZ29tY29uIiwiYWRibG9ja2VyU3RhdHVzIjp7IkRJU1BMQVkiOiJkaXNhYmxlZCIsIkZBQ0VCT09LIjoiZGlzYWJsZWQiLCJUV0lUVEVSIjoiZGlzYWJsZWQiLCJSRURESVQiOiJkaXNhYmxlZCJ9LCJ2ZXJzaW9uIjoiMS45LjAiLCJzY29yZSI6MTA5MDB9XQ==">
+
+
+<h2><i> 7 Исследование кривых второго порядка</i></h2>
+<h3>7.1 Цель работы</h3>
+Определить вид кривых, найти их основные характеристики и сделать рисунки.
+<h3>7.2 Теоретическое введение
+<p>I Классификация кривых второго порядка</p></h3>
+<!--BR-->Алгебраической кривой второго порядка называется кривая, уравнение которой в декартовой прямоугольной системе координат (ДПСК) можно представить в виде:
+
+<table><tbody><tr>
+<td align="CENTER" width="100%"><img src="./Пример выполнения типового расчета 1.7_files/ris1.7.1.JPG" align="MIDDLE"> ­ ­ ­ <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.2.JPG" align="MIDDLE"></td>
+<td align="RIGHT" width="20%">(7.1)</td>
+</tr></tbody></table>
+Одна и та же кривая в зависимости от расположения, относительно ДПСК будет, иметь разные уравнения. Оказывается, что для каждой кривой, определяемой уравнением (7.1), можно подобрать такую новую ДПСК ( повернутую), что ее уравнение примет вид:
+
+<table><tbody><tr>
+<td align="CENTER" width="100%"><i>A</i><i>x</i><sup><font size="2">2</font></sup> + <i>B</i><i>y</i><sup><font size="2">2</font></sup> + <i>C</i><i>x</i> + <i>D</i><i>y</i> + <i>E</i> = 0; ­ ­ ­ <font size="4">(</font><i>A</i><sup><font size="2">2</font></sup> + <i>B</i><sup><font size="2">2</font></sup> &#8800; 0<font size="4">)</font>,</td>
+<td align="RIGHT" width="20%">(7.2)</td>
+</tr></tbody></table>
+т.е. уравнение не будет содержать произведение <i>xy</i>.
+<br>В типовом расчете дается именно это уравнение (7.2), поэтому мы и будем его рассматривать.
+<br>Вид кривой, определяемой уравнением (7.2), зависит от коэффициентов <i>A, B, C, D, E </i> поэтому проведем подробный 
+анализ каждого из следующих случаев.
+<p>1.	<i>AB</i> &#8800; 0, т.е. <i>A</i> &#8800; 0 и <i>B</i> &#8800; 0 случай <i><b>центральной кривой.</b></i>
+<br>Выделим полные квадраты:
+<br><img src="./Пример выполнения типового расчета 1.7_files/ris1.7.5.JPG" align="MIDDLE">
+<br><img src="./Пример выполнения типового расчета 1.7_files/ris1.7.6.JPG" align="MIDDLE">
+<br>Таким образом (7.2) примет вид 
+
+<table><tbody><tr>
+<td align="CENTER" width="100%"><img src="./Пример выполнения типового расчета 1.7_files/ris1.7.7.JPG" align="MIDDLE"></td>
+<td align="RIGHT" width="20%">(7.3)</td>
+</tr></tbody></table>
+<br>Положим <i>&#945;</i> = –<i>C</i> <b>/</b> 2<i>A</i>, ­ ­ <i>&#946;</i> = –<i>D</i> <b>/</b> 2<i>B</i> ­ ­ и 
+­ ­ <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.8.JPG" align="MIDDLE">
+<br>тогда получим 
+
+<table><tbody><tr>
+<td align="CENTER" width="100%"><i>A</i>(<i>x – &#945;</i>)<sup><font size="2">2</font></sup> + <i>B</i>(<i>y – &#946;</i>)<sup><font size="2">2</font></sup> = <i>H</i></td>
+<td align="RIGHT" width="20%">(7.4)</td>
+</tr></tbody></table>
+<br>Перейдем теперь к новой ДПСК – <i>X&#8242;O&#8242;Y&#8242;</i>, которая получается из исходной ДПСК ­ <i>XOY</i> 
+параллельным переносом (соответствующие оси координат параллельны и сонаправлены). Начало ДПСК ­ 
+<i>X&#8242;O&#8242;Y&#8242;</i> поместим в т. <i>O&#8242;</i>(<i>&#945;</i>, <i>&#946;</i> ). Тогда точка <i>M</i>, имеющая относительно ДПСК ­ <i>XOY</i> координаты (<i>Х,У</i>) будет иметь относительно ДПСК ­ <i>X&#8242;O&#8242;Y&#8242;</i> координаты <i>x'</i> = <i>x</i> – <i>&#945;</i> и 
+<i>y'</i> = <i>y</i> – <i>&#946;</i>, а уравнение (7.4) в ДПСК ­ <i>X&#8242;O&#8242;Y&#8242;</i> запишется     
+
+<table><tbody><tr>
+<td align="CENTER" width="100%"><img src="./Пример выполнения типового расчета 1.7_files/ris1.7.9.JPG" align="MIDDLE"></td>
+<td align="RIGHT" width="20%">(7.5)</td>
+</tr></tbody></table>
+(для удобства в дальнейшем вместо <i>x'</i> и <i>y'</i> будем писать <i>x</i> и <i>y</i>).
+</p><p> <i><b> 1.1 </b></i> <i>AB</i> &gt; 0 – <b><i>эллиптический тип</i></b>.
+<br><i><b>a)</b></i> <i>A</i> &gt; 0, ­ ­ <i>B</i> &gt; 0, ­ ­ <i>H</i> &gt; 0.
+<br>Положив <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.10.JPG" align="MIDDLE"> <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.14.JPG" align="MIDDLE"> перепишем (7.5) в виде
+
+<table><tbody><tr>
+<td align="CENTER" width="100%"><img src="./Пример выполнения типового расчета 1.7_files/ris1.7.11.JPG" align="MIDDLE"></td>
+<td align="RIGHT" width="20%">(7.6)</td>
+</tr></tbody></table>
+В этом уравнении, не нарушая общности, можно считать <i>a</i><sup><font size="2">2</font></sup> &#8805; 
+<i>b</i><sup><font size="2">2</font></sup>, в противном случае нужно просто ДПСК повернуть на 90°.
+<br>Кривая, уравнение которой относительно некоторой ДПСК имеет вид <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.11.JPG" align="MIDDLE"> называется 
+<b><i>эллипсом</i></b>. Уравнение <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.11.JPG" align="MIDDLE"> называется <b><i>каноническим уравнением эллипса</i></b>.
+<br><i><b> b)</b></i> <i>A</i> &gt; 0, ­ ­ <i>B</i> &gt; 0, ­ ­ <i>H</i> = 0. 
+<br> Положив <i>a</i><sup><font size="2">2</font></sup> = 1 <b>/</b> <i>A</i>, ­ ­ <i>b</i><sup><font size="2">2</font></sup> = 1 <b>/</b> <i>B</i>, получим
+<br><img src="./Пример выполнения типового расчета 1.7_files/ris1.7.12.JPG" align="MIDDLE">. 
+<br><b><i>Этому уравнению удовлетворяют координаты единственной точки</i></b><i> O'</i> (0,0). 
+<br><i><b> c)</b></i> <i>A</i> &gt; 0, ­ ­ <i>B</i> &gt; 0, ­ ­ <i>H</i> &lt; 0.  
+<br>Положив <i>a</i><sup><font size="2">2</font></sup> = – <i>H</i> <b>/</b> <i>A</i>, ­ ­ <i>b</i><sup><font size="2">2</font></sup> = – <i>H</i> <b>/</b> <i>B</i>, перепишем (7.5) в виде: <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.13.JPG" align="MIDDLE">.
+<br>Полученному уравнению не удовлетворяют координаты ни одной точки, т.е. оно определяет <b><i>пустое множество точек</i></b>. Условно это пустое множество называют <b><i>мнимым эллипсом</i></b>.
+<br>Таким образом мы полностью проанализировали ситуацию, когда <i>AB</i> &gt; 0. Теперь перейдем к следующему случаю.
+</p><p> <i><b> 1.2 </b></i> <i>AB</i> &lt; 0 – <i><b>гиперболический тип</b></i>.
+<br><i><b>a)</b></i> <i>A</i> &gt; 0, ­ ­  <i>B</i> &lt; 0, ­ ­  <i>H</i> &gt; 0.
+<br>Положив <i>a</i><sup><font size="2">2</font></sup> = <i>H <b>/</b> A</i>, ­ ­ <i>b</i><sup><font size="2">2</font></sup> = –<i>H <b>/</b> B</i>, перепишем (7.5) в виде
+
+<table><tbody><tr>
+<td align="CENTER" width="100%"><img src="./Пример выполнения типового расчета 1.7_files/ris1.7.15.JPG" align="MIDDLE"></td>
+<td align="RIGHT" width="20%">(7.7)</td>
+</tr></tbody></table> 							
+Кривая, уравнение которой относительно некоторой ДПСК имеет вид <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.15.JPG" align="MIDDLE">, называется <i><b>гиперболой</b></i>. Уравнение <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.15.JPG" align="MIDDLE"> называется <i><b>каноническим уравнением гиперболы</b></i>.
+<br><b><i>Замечание.</i></b> Если <i>A</i> &gt; 0, ­ ­ <i>B</i> &lt; 0, ­ ­ <i>H</i> &gt; 0, то (7.5) можно преобразовать к виду <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.16.JPG" align="MIDDLE"> повернув затем ДПСК ­ ­ <i>X&#8242;O&#8242;Y&#8242;</i> на 90°, мы получим уравнение вида
+<br> <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.17.JPG" align="MIDDLE">, ­ ­ где <i>x" = y', ­ ­ y" = –x'</i>. 	 
+<br><i><b>b)</b></i> <i>A</i> &gt; 0, ­ ­  <i>B</i> &lt; 0, ­ ­  <i>H</i> = 0.
+Положив <i>a</i><sup><font size="2">2</font></sup> = 1<i> <b>/</b> A</i>, ­ ­  
+<i>b</i><sup><font size="2">2</font></sup> = –1<i> <b>/</b> B</i>, получим:
+<img src="./Пример выполнения типового расчета 1.7_files/ris1.7.18.JPG" align="MIDDLE">.
+<br>Разложим левую часть на множители: <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.19.JPG" align="MIDDLE">.
+<br> Теперь хорошо видно, что <i><b>этому уравнению удовлетворяют координаты точек двух прямых, проходящих через начало координат </b></i> <i>O'</i> (0,0): <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.20.JPG" align="MIDDLE"> 
+и <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.21.JPG" align="MIDDLE">. Поэтому говорят, что уравнение <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.18.JPG" align="MIDDLE"> 
+<b><i>определяет вырожденную гиперболу</i></b>.
+Итак, мы полностью выяснили, какие кривые могут получаться при <i>AB</i> &#8800; 0 и переходим к случаю, когда <i>AB</i> = 0.
+
+</p><p><b><i>2 </i></b><i> AB</i> = 0 – <b><i>параболический тип</i></b>. 
+<br><b><i>2.1 </i></b><i> A</i> = 0 (<i>B</i> &#8800; 0), ­ ­ <i>C</i> &#8800; 0. В этом случае (7.2) имеет вид:
+<br><i>By</i><sup><font size="2">2</font></sup> + <i>Cx</i> + <i>Dy</i> + <i>E</i> = 0.
+<br>Выделив полный квадрат, преобразуем это уравнение:
+<br> <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.22.JPG" align="MIDDLE">.
+<br>Положим, далее, <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.23.JPG" align="MIDDLE">, <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.24.JPG" align="MIDDLE">, <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.25.JPG" align="MIDDLE">, тогда уравнение перепишется в виде: (<i>y</i> – <i>&#946;</i> )<sup><font size="2">2</font></sup> = 2<i>p</i>(<i>x</i> – <i>&#945;</i>). Перейдя теперь, как и в случае 1 к новой ДПСК ­ ­ <i>X 
+&#8242;O&#8242;Y&#8242;</i>  
+<br><img src="./Пример выполнения типового расчета 1.7_files/ris1.7.26.JPG" align="MIDDLE"> 
+<br>получим: (<i>y'</i> )<sup><font size="2">2</font></sup> = 2<i>px'</i>. Опустим для удобства штрихи: 
+
+<table><tbody><tr>
+<td align="CENTER" width="100%"> <i>y</i><sup><font size="2">2</font></sup> = 2<i>px</i></td>
+<td align="RIGHT" width="20%">(7.8)</td>
+</tr></tbody></table> 	
+Кривая, уравнение которой относительно некоторой ДПСК имеет вид <i>y</i><sup><font size="2">2</font></sup> = 2<i>px</i>, называется <b><i>параболой</i></b>. Уравнение <i>y</i><sup><font size="2">2</font></sup> = 2<i>px</i> называется <b><i>каноническим уравнением параболы</i></b>.
+<br><b><i>Замечание</i></b>. В уравнении (7.8), не нарушая общности, можно считать <i>p</i> &gt; 0, в противном случае нужно повернуть ДПСК на 180°.
+<br><b><i>Замечание.</i></b> Случай <i>B</i> = 0, ­ <i>D</i> &#8800; 0, очевидно, сводится к предыдущему, если повернуть ДПСК на 90°.
+<br>Наконец, чтобы полностью завершить анализ уравнения (7.2) нам осталось рассмотреть последние три случая.
+
+</p><p><b><i>2.2 </i></b><i> A</i> = 0 (<i>B</i> &#8800; 0), ­ ­ <i>C</i> = 0.  
+<br>В этом случае уравнение (7.2) имеет вид <i>By</i><sup><font size="2">2</font></sup> + <i>Dy</i> + <i>E</i> = 0.
+<br>Выделив полный квадрат, преобразуем его к виду: <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.27.JPG" align="MIDDLE">. Положим <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.28.JPG" align="MIDDLE">, 
+ ­ ­ <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.29.JPG" align="MIDDLE">, получим, (<i>y</i> – <i>&#946;</i>)<sup><font size="2">2</font></sup> = <i>H</i>, 
+перейдя к ДПСК ­ ­ <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.30.JPG" align="MIDDLE"> и опуская в уравнении штрихи, получим:
+
+<table><tbody><tr>
+<td align="CENTER" width="100%"> <i>y</i><sup><font size="2">2</font></sup> = <i>H</i></td>
+<td align="RIGHT" width="20%">(7.9)</td>
+</tr></tbody></table> 	 						
+<b><i>a)</i></b><i> H</i> &gt; 0  
+<br>Обозначим <i>a</i><sup><font size="2">2</font></sup> = <i>H</i> тогда (7.9) примет вид:
+ 
+<table><tbody><tr>
+<td align="CENTER" width="100%"> <i>y</i><sup><font size="2">2</font></sup> = <i>a</i><sup><font size="2">2</font></sup></td>
+<td align="RIGHT" width="20%">(7.10)</td>
+</tr></tbody></table> 							
+<b><i>Этому уравнению удовлетворяют координаты точек, лежащих на параллельных прямых </i></b> <i>y</i> = <i>a</i> ­ 
+и ­ <i>y</i> = –<i>a</i> (<b><i>вырожденная парабола</i></b>).
+<br><b><i>b)</i></b><i> H</i> &lt; 0 
+<br> Обозначив <i>a</i><sup><font size="2">2</font></sup> = –<i>H</i>, перепишем (7.9) в виде:
+<i>y</i><sup><font size="2">2</font></sup> = –<i>a</i><sup><font size="2">2</font></sup>. Этому уравнению не удовлетворяют координаты ни одной точки, т.е. оно определяет пустое множество, которое условно называют <b><i>парой мнимых параллельных прямых</i></b>.
+<br><b><i>c)</i></b><i> H</i> = 0   
+<br>То есть (7.9) имеет вид
+
+<table><tbody><tr>
+<td align="CENTER" width="100%"> <i>y</i><sup><font size="2">2</font></sup> = 0</td>
+<td align="RIGHT" width="20%">(7.11)</td>
+</tr></tbody></table> 	 							
+Этому уравнению удовлетворяют координаты точек оси абсцисс. Так как уравнение (7.11) есть “предельный” случай (7.10) (<i>a</i><sup><font size="2">2</font></sup> &#8594; 0), то говорят, что уравнению 
+<i>y</i><sup><font size="2">2</font></sup> = 0 соответствует <b><i>пара совпадающих параллельных прямых</i></b>. 
+<br><b><i>Замечание.</i></b> Случай <i>B</i> = 0 и <i>D</i> = 0 сводится к предыдущему поворотом осей на 90°.
+<br>Таким образом, подобрав новую ДПСК, уравнение <i>Ax</i><sup><font size="2">2</font></sup> + 
+<i>By</i><sup><font size="2">2</font></sup> + <i>Cx</i> + <i>Dy</i> + <i>E</i> = 0 можно привести к одному из следующих 9 видов (см. таблицу).
+
+<table border="1">
+<caption><h3> Классификация алгебраических кривых второго порядка </h3></caption>
+<tbody><tr>
+<td align="CENTER"> Номер вида </td>
+<td align="CENTER"> Уравнение кривой </td>
+<td align="CENTER"> Название кривой </td>
+<td align="CENTER"> Рисунок кривой </td>
+</tr>
+<tr>
+
+<th colspan="4"> <h3>Эллиптический тип кривой (<i>AB</i> &gt; 0)</h3></th>
+</tr>
+<tr>
+<td align="CENTER"> 1</td>
+<td align="CENTER"> <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.11.JPG"> 
+<br>(<i>a</i> &gt; <i>b</i> &gt; 0)</td>
+<td align="CENTER"> Эллипс </td>
+<td align="CENTER"> <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.32.JPG"> </td>
+</tr>
+<tr>
+<td align="CENTER"> 2</td>
+<td align="CENTER"> <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.12.JPG"> </td>
+<td align="CENTER"> Точка </td>
+<td align="CENTER"> <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.33.JPG"> </td>
+</tr>
+<tr>
+<td align="CENTER"> 3</td>
+<td align="CENTER"> <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.13.JPG"> </td>
+<td align="CENTER"> Мнимый эллипс </td>
+<td align="CENTER"> <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.52.JPG"></td>
+</tr>
+<tr>
+<th colspan="4"> <h3>Гиперболический тип кривой (<i>AB</i> &lt; 0) </h3></th>
+</tr>
+<tr>
+<td align="CENTER"> 4</td>
+<td align="CENTER"> <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.15.JPG" align="MIDDLE"> </td>
+<td align="CENTER"> Гипербола </td>
+<td align="CENTER"> <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.34.JPG" align="MIDDLE"></td>
+</tr>
+<tr>
+<td align="CENTER"> 5</td>
+<td align="CENTER"> <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.18.JPG" align="MIDDLE"> </td>
+<td align="CENTER"> Пара пересекающихся прямых (вырожденная гипербола)</td>
+<td align="CENTER"> <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.35.JPG" align="MIDDLE"></td>
+</tr>
+<tr>
+<th colspan="4"> <h3>Параболический тип кривой (<i>AB</i> = 0) </h3></th>
+</tr>
+<tr>
+<td align="CENTER"> 6</td>
+<td align="CENTER"> <i>y</i><sup><font size="2">2</font></sup> = 2<i>px</i>
+<br> (<i>p</i> &gt; 0)</td>
+<td align="CENTER"> Парабола </td>
+<td align="CENTER"> <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.36.JPG" align="MIDDLE"></td>
+</tr>
+<tr>
+<td align="CENTER"> 7</td>
+<td align="CENTER"> <i>y</i><sup><font size="2">2</font></sup> = <i>b</i><sup><font size="2">2</font></sup></td>
+<td align="CENTER"> Пара параллельных прямых (вырожденная парабола) </td>
+<td align="CENTER"> <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.37.JPG" align="MIDDLE"></td>
+</tr>
+<tr>
+<td align="CENTER">8</td>
+<td align="CENTER"> <i>y</i><sup><font size="2">2</font></sup> = –<i>b</i><sup><font size="2">2</font></sup></td>
+<td align="CENTER"> Пара мнимых паралельных прямых</td>
+<td align="CENTER"><img src="./Пример выполнения типового расчета 1.7_files/ris1.7.52.JPG"> </td></tr><tr>
+<td align="CENTER"> 9</td>
+<td align="CENTER"> <i>y</i><sup><font size="2">2</font></sup> = 0</td>
+<td align="CENTER"> Пара совпадающих параллельных прямых</td>
+<td align="CENTER"> <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.38.JPG" align="MIDDLE"></td>
+</tr>
+<tr>
+<td colspan="4" align="CENTER"> Уравнения 1-5 относятся к случаю центральной кривой, так как каждое из них описывает либо 
+пустое множество, либо множество, имеющее единственный центр  </td>
+</tr>
+</tbody></table> 
+Наш анализ показывает, что из всех алгебраических кривых второго порядка интерес представляют только эллипс, гипербола и парабола (прямые мы рассматривали ранее). Эти кривые действительно обладают рядом замечательных свойств, которые используются в технике. Отметим важнейшие из них.
+
+</p><p><table>
+<tbody><tr><td valign="bottom" align="LEFT" width="50%"><h3>II ЭЛЛИПС </h3></td><td valign="top" align="right" width="50%"> <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.11.JPG" align="MIDDLE"> (<i>a</i> &gt; <i>b</i> &gt; 0)</td></tr>
+</tbody></table>
+1.	Эллипс имеет <b><i>центр симметрии</i></b> – начало координат <i>O</i>(0,0).
+<br>2.	Эллипс имеет <b><i>две оси симметрии</i></b> – оси координат.
+<br>3.	Точки пересечения эллипса с осями симметрии называются <b><i>вершинами</i></b> – <i>A</i><sub><font size="2">1</font></sub>(–<i>a,c</i>),
+ ­ <i>A</i><sub><font size="2">2</font></sub>(<i>a</i>,0), ­ <i>B</i><sub><font size="2">1</font></sub>(0,–<i>b</i>),
+ ­ <i>B</i><sub><font size="2">2</font></sub>(0,<i>b</i>) (4 вершины).
+<br>4. Отрезок <i>A</i><sub><font size="2">1</font></sub><i>A</i><sub><font size="2">2</font></sub> называется 
+<b><i>большой осью</i></b> эллипса, длина этой оси равна 2<i>a</i>; аналогично, отрезок <i>B</i><sub><font size="2">1</font></sub>
+<i>B</i><sub><font size="2">2</font></sub> называется <b><i>малой осью</i></b> эллипса, длина малой оси 2<i>b</i> (2<i>b</i> &lt; 2<i>a</i>). 
+Отрезки <i>OA</i><sub><font size="2">1</font></sub>, <i>OA</i><sub><font size="2">2</font></sub> – большие полуоси; <i>OB</i><sub><font size="2">1</font></sub>, <i>OB</i><sub><font size="2">2</font></sub> – малые полуоси, их длины соответственно равны <i>a</i> и <i>b</i> (<i>a</i> &lt; <i>b</i>). Иногда слова “большая полуось”, “малая полуось”, 
+“большая ось”, “малая ось” относятся не к отрезкам, а к их длинам, т.е. к числам <i>a</i>, <i>b</i>, 2<i>a</i> и 2<i>b</i> соответственно.
+<br>5. Точки, лежащие на большой оси эллипса <i>F</i><sub><font size="2">1</font></sub>
+(–<i>C</i>,0) и <i>F</i><sub><font size="2">2</font></sub>(<i>C</i>,0), где <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.39.JPG" align="MIDDLE"> (0 &lt; <i>c</i> &lt; <i>a</i>) называются <b><i><u>фокусами эллипса</u></i></b>. Эти точки являются замечательными. 
+<br><b><i>Фокальное свойство эллипса</i>:</b> для любой точки <i>M</i>, лежащей на эллипсе, <b>|</b><i>F</i><sub><font size="2">1</font></sub><i>M</i><b>|</b> + <b>|</b><i>F</i><sub><font size="2">2</font></sub><i>M</i><b>|</b> = 2<i>a</i>, т.е. эллипс является множеством точек плоскости, для которых сумма расстояний до двух данных точек плоскости, фокусов, есть величина постоянная, равная 2<i>a</i>, и которая больше расстояния между фокусами (2<i>a</i> &gt; 2<i>c</i>). 
+<br>6. <b><i>Эксцентриситетом</i></b> эллипса называется число <i>&#949;</i> = <i>c</i>/<i>a</i>.  
+<br>Заметим, что <b><i>эксцентриситет эллипса</i></b> <i>&#949;</i> &lt; 1. Это число характеризует форму эллипса: при 
+<i>&#949;</i> = 0, <i>a</i> = <i>b</i>, т.е. эллипс становится окружностью, а чем ближе эксцентриситет к 1, тем больше эллипс отличается от окружности, т.е. эллипс становится более вытянутым.
+<br>7. Прямые: <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.40.JPG" align="MIDDLE"> и <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.41.JPG" align="MIDDLE"> перпендикулярные оси симметрии, соответствующей большой оси эллипса, называются <i><b>директрисами</b></i>. Заметим, что так как <i>&#949;</i> &lt; 1, то директрисы лежат вне эллипса, <u>за</u> его вершинами <i>A</i><sub><font size="2">1</font></sub> и <i>A</i><sub><font size="2">2</font></sub>. Эти прямые являются также замечательными для эллипса.
+<br><u>Директориальное свойство эллипса:</u> для любой точки <i>M</i>, лежащей на эллипсе, 
+<br><img src="./Пример выполнения типового расчета 1.7_files/ris1.7.42.JPG" align="MIDDLE">,
+<br>где <i>&#961;</i>(<i>M</i>, <i>L</i><sub><font size="2">1</font></sub>) – расстояние от точки <i>M</i> до директрисы <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.43.JPG" align="MIDDLE"> соответствующей фокусу <i>F</i><sub><font size="2">1</font></sub>(–<i>c</i>, 0),  
+<i>&#961;</i>(<i>M</i>, <i>L</i><sub><font size="2">2</font></sub>) – расстояние до директрисы <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.44.JPG" align="MIDDLE">, 
+соответствующей фокусу <i>F</i><sub><font size="2">2</font></sub>(<i>c</i>, 0). 
+То есть эллипс – множество точек плоскости, для каждой из которых расстояние до данной точки (фокуса), деленное на 
+расстояние до данной прямой (директрисы), есть постоянная величина, которая меньше 1 (и равна эксцентриситету).
+<br><b><i>Замечание</i></b>. Директориальное и фокальное свойства являются определяющими для эллипса. Например, 
+множество точек плоскости, для которых расстояние до данной точки (фокуса), деленное на расстояние до данной прямой 
+(директрисы), есть постоянная величина, которая меньше 1, является эллипсом. 
+<br>8.<b><i> Оптическое свойство эллипса:</i></b> если изготовить “зеркальную” нить в форме эллипса, то луч, идущий из 
+одного фокуса, отразившись от эллипса, попадает в другой фокус, т.е. если в т. <i>M</i>, лежащей на эллипсе провести к 
+нему касательную <i>T</i>, то углы между этой касательной и прямыми <i>MF</i><sub><font size="2">1</font></sub> 
+и <i>MF</i><sub><font size="2">2</font></sub> будут равны 
+(<img src="./Пример выполнения типового расчета 1.7_files/ris1.7.45.JPG" align="MIDDLE">&#945; = <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.45.JPG" align="MIDDLE">&#946;).
+<br>Ниже приводим рис. 7.1, на котором изображен эллипс и все его замечательные точки и прямые.
+
+<br></p><center><img src="./Пример выполнения типового расчета 1.7_files/Ris 7.1.JPG">
+<br> Рис. 7.1 Эллипс</center>
+<br><b><i>Замечание.</i></b> Чтобы выяснить форму эллипса, следовало бы разрешить уравнение (7.6) относительно <i>Y</i>, 
+средствами математического анализа исследовать функцию <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.47.JPG" align="MIDDLE"> и построить ее график. 
+Он совпадает с частью эллипса, лежащей в 1-й четверти, поэтому по симметрии можно достроить весь эллипс.
+<br><b><i>Замечание.</i></b> Отметим, что эллипс, в отличие от гиперболы и параболы, является ограниченной кривой, 
+поэтому когда его рисуют, то, обычно, сначала рисуют “коробочку” – <u>основной прямоугольник</u>, который касается 
+вершин эллипса. 
+<table>
+<tbody><tr><td valign="bottom" align="LEFT" width="50%"><h3>III ГИПЕРБОЛА </h3></td><td valign="top" align="right" width="50%"> <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.15.JPG" align="MIDDLE"> (<i>a</i> &gt; 0, <i>b</i> &gt; 0)</td></tr>
+</tbody></table>
+1. Гипербола имеет <i><b>центр симметрии</b></i> – начало координат т.<i>O</i>(0,0).
+<br>2. Гипербола имеет <i><b>две оси симметрии</b></i> – оси координат.
+<br>3. Точки пересечения с осями симметрии называются вершинами гиперболы. В отличие от эллипса гипербола имеет 
+<i><b>2 вершины:</b></i> <i>A</i><sub><font size="2">1</font></sub>(–<i>a</i>, 0) и <i>A</i><sub><font size="2">2</font></sub>(<i>a</i>, 0) 
+– т.е. гипербола пересекает только одну ось симметрии.
+<br>4. Отрезок <i>A</i><sub><font size="2">1</font></sub><i>A</i><sub><font size="2">2</font></sub> называется 
+<i><b>действительной осью</b></i> гиперболы, длина действительной оси равна 2<i>a</i>. Точки 
+<i>B</i><sub><font size="2">1</font></sub>(0, –<i>b</i>) и <i>B</i><sub><font size="2">2</font></sub>(0, <i>b</i>) 
+лежат на оси симметрии, которую гипербола не пересекает. Отрезок <i>B</i><sub><font size="2">1</font></sub><i>B</i><sub><font size="2">2</font></sub> 
+называется <i><b>мнимой осью</b></i> гиперболы, длина мнимой оси равна 2<i>b</i> .
+<br>Все сказанное далее в предыдущем разделе II п.4 для эллипса, касающееся полуосей и терминологии, относится и к гиперболе.
+<br>5. Точки, лежащие на продолжении действительной оси гиперболы <i>F</i><sub><font size="2">1</font></sub>(–<i>C</i>, 0) 
+и <i>F</i><sub><font size="2">2</font></sub>(<i>C</i>, 0), где <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.48.JPG" align="MIDDLE">, называются <i><b>фокусами гиперболы</b></i>.
+<br><i><b>Фокальное свойство гиперболы:</b></i> для любой точки <i>M</i>, лежащей на гиперболе 
+<b>|</b>|<i>F</i><sub><font size="2">1</font></sub><i>M</i>| – |<i>F</i><sub><font size="2">2</font></sub><i>M</i>|<b>|</b> = 2<i>a</i>, т.е. гипербола является множеством точек плоскости, для которых модуль разности расстояний до двух данных точек плоскости, фокусов, есть величина постоянная, равная 2<i>a</i> &gt; 0. 
+<br>6. <b><i>Эксцентриситетом гиперболы</i></b> называется число <i>&#949;</i> = <i>C</i>/<i>a</i>.
+<br>Заметим, что эксцентриситет гиперболы <i>&#949;</i> &gt; 1.
+<br>7. Прямые <i>z</i><sub><font size="2">1</font></sub>: <i>x</i> = – <i>a</i>/<i>&#949;</i> ­ и ­ <i>z</i><sub><font size="2">2</font></sub>: <i>x</i> = <i>a</i>/<i>&#949;</i> перпендикулярные действительной оси гиперболы, называются <i><b>директрисами.
+<br>Директориальное свойство гиперболы</b></i> дословно формулируется так же, как и для эллипса, только <i>&#949;</i> &lt; 1, поэтому директрисы гиперболы лежат между ее вершинами.
+<br><i><b>Замечание.</b></i> Как и для эллипса, директориальное и фокальное свойства являются определяющими для гиперболы.
+<br>8. Гипербола, как и эллипс, обладает <i><b>оптическим свойством:</b></i> луч, идущий из фокуса <i>F</i><sub><font size="2">1</font></sub> 
+отразившись от гиперболы в т. <i>M</i>, лежащей на гиперболе, идет по прямой <i>F</i><sub><font size="2">2</font></sub> <i>M</i>; 
+т.е., если в т. <i>M</i>, лежащей на гиперболе, провести касательную <i>T</i>, то она будет биссектрисой угла между прямыми <i>MF</i><sub><font size="2">1</font></sub> и <i>MF</i><sub><font size="2">2</font></sub>.
+<br>9. Гипербола имеет <b><i>две асимптоты:</i></b> <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.49.JPG" align="MIDDLE"> и <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.50.JPG" align="MIDDLE"> (у эллипса их нет и быть не может, так как эллипс ограниченная кривая).
+<br><center><img src="./Пример выполнения типового расчета 1.7_files/Ris 7.2.JPG">
+<br> Рис. 7.2 Гипербола</center>
+<br>На рис. 7.2 изображена гипербола и все ее замечательные точки и прямые.
+<br><i><b>Замечание.</b></i> Чтобы выяснить форму гиперболы и найти ее  асимптоты, следовало бы поступить так же, как и в случае эллипса.
+<br><i><b>Замечание.</b></i> При построении гиперболы, как и для эллипса, обычно сначала рисуют основной прямоугольник. Его центр – центр симметрии гиперболы, стороны параллельны осям гиперболы и касаются ее вершин, длины сторон равны 2<i>a</i>  и 2<i>b</i>. Диагонали основного прямоугольника (продолжение) являются асимптотами гиперболы. В отличие от эллипса гипербола лежит вне основного прямоугольника.
+
+<p><table>
+<tbody><tr><td valign="BOTTOM" align="LEFT" width="50%"><h3>IV ПАРАБОЛА </h3></td><td valign="TOP" align="right" width="50%"> <i>y</i><sup><font size="2">2</font></sup> = 2<i>px</i>(<i>p</i> &gt; 0)</td></tr>
+</tbody></table>
+
+1. Парабола в отличие от эллипса и гиперболы, <i><b>не имеет центра симметрии</b></i>, т.е. не относится к центральным кривым. 
+<br>2. Парабола имеет <i><b>одну ось симметрии</b></i> – ось абсцисс.
+<br>3. Точка пересечения параболы с осью симметрии называется вершиной – т.<i> О</i>(0,0), т.е. парабола <i><b>имеет одну вершину</b></i>.
+<br>4. Число <i>p</i> &gt; 0 называется <i><b>параметром параболы</b></i>.
+<br>5. Точка <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.53.JPG" align="MIDDLE">, лежащая на оси симметрии параболы и отстоящая от ее вершины на <i>p</i>/2, называется <i><b>фокусом параболы</b></i>.
+<br>6. Прямая <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.54.JPG" align="MIDDLE">, перпендикулярная оси параболы и отстоящая от ее вершины на <i>p</i>/2, называется <i><b>директрисой параболы</b></i>. Заметим, что фокус лежит “внутри” параболы, а директриса “вне” ее, т.е. фокус и директриса лежат по разные стороны от параболы, как и в случае эллипса и гиперболы.
+<br><i><b>Директориальное свойство параболы</b></i>: для любой точки <i>M</i>, лежащей на параболе, |<i>FM| = &#961;</i>(<i>M,L</i>), т.е. |<i>FM</i>| / <i>&#961;M</i>(<i>L</i>) = 1 и можно считать, что <i><b>эксцентриситет параболы</b> &#949;</i> = 1. Таким образом, парабола занимает промежуточное положение между эллипсом, у которого <i>&#949;</i> &lt; 1, и гиперболой, у которой <i>&#949;</i> &gt; 1.
+<br><i><b>Замечание.</b></i> Директориальное свойство является определяющим для параболы так же , как и для эллипса, и для гиперболы.
+<br>7. <i><b><u>Оптическое свойство параболы:</u></b></i> луч, идущий из фокуса, отразившись от параболы, идет параллельно оси параболы, т.е. параболическое зеркало дает параллельный пучок света, если источник поместить в фокус параболы.
+<br>На рис. 7.3 изображена парабола с ее замечательными точками и прямыми.
+<br></p><center><img src="./Пример выполнения типового расчета 1.7_files/Ris 7.3.JPG">
+<br> Рис. 7.3 Парабола</center>
+<br><i><b>Замечание.</b></i> Форма параболы хорошо известна из школьного курса, так как парабола является графиком квадратного трехчлена.
+<h3>7.3 Содержание типового расчета</h3>
+Четыре алгебраические кривые второго порядка заданы уравнениями вида
+<br><i>Ax</i><sup><font size="2">2</font></sup> + <i>By</i><sup><font size="2">2</font></sup> + <i>Cx</i> + <i>Dy</i> + <i>E</i> = 0.
+<br>Определить тип каждой кривой, найти ее основные параметры и сделать чертеж.
+<h3>7.4 Пример выполнения типового расчета</h3>
+<h3>Условие типового расчета</h3>
+Уравнения кривых заданы таблицей из коэффициентов.
+<table border="1">
+<tbody><tr>
+<td align="CENTER"> № п/п </td>
+<td align="CENTER"> <i>A</i> </td>
+<td align="CENTER"> <i>B</i> </td>
+<td align="CENTER"> <i>C</i> </td>
+<td align="CENTER"> <i>D</i> </td>
+<td align="CENTER"> <i>E</i> </td></tr>
+<tr>
+<td align="CENTER"> 1 </td>
+<td align="RIGHT"> 25 </td>
+<td align="RIGHT"> –36 </td>
+<td align="RIGHT"> –50 </td>
+<td align="RIGHT"> –72 </td>
+<td align="RIGHT"> 3589 </td></tr>
+<tr>
+<td align="CENTER"> 2 </td>
+<td align="RIGHT"> 0 </td>
+<td align="RIGHT"> 2 </td>
+<td align="RIGHT"> –16 </td>
+<td align="RIGHT"> 6 </td>
+<td align="RIGHT"> –23 </td></tr>
+<tr>
+<td align="CENTER"> 3 </td>
+<td align="RIGHT"> 2 </td>
+<td align="RIGHT"> 3 </td>
+<td align="RIGHT"> –12</td>
+<td align="RIGHT"> 6 </td>
+<td align="RIGHT"> 21 </td></tr>
+<tr>
+<td align="CENTER"> 4 </td>
+<td align="RIGHT"> 2 </td>
+<td align="RIGHT"> 1 </td>
+<td align="RIGHT"> –4 </td>
+<td align="RIGHT"> 0 </td>
+<td align="RIGHT"> 0 </td></tr>
+</tbody></table>
+Приведем решения первых трех задач, указанных в задании.
+<br><i><b>Задача 1.</b></i>
+<br>1. По условию, уравнение имеет вид: 25<i>x</i><sup><font size="2">2</font></sup> – 36<i>y</i><sup><font size="2">2</font></sup> – 50<i>x</i> – 72<i>y</i> + 3589 = 0.
+<br>2. Так как <i>AB</i> = 25·(–36) &lt; 0, то это уравнение гиперболического типа (см. 1, п. 1.2), следовательно, оно может определять или гиперболу, или пару пересекающихся прямых.
+<br>3. Выделим полные квадраты и приведем уравнение к каноническому виду:
+<br>25(<i>x</i><sup><font size="2">2</font></sup> – 2<i>x</i>) – 36(<i>y</i><sup><font size="2">2</font></sup> + 2<i>y</i>) + 3589 = 0;
+<br>25(<i>x</i> – 1)<sup><font size="2">2</font></sup> – 36(<i>y</i> + 1)<sup><font size="2">2</font></sup> = –3589 + 25 – 36;
+<br>25(<i>x</i> – 1)<sup><font size="2">2</font></sup> – 36(<i>y</i> + 1)<sup><font size="2">2</font></sup> = –3600;
+<br> <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.55.JPG" align="MIDDLE">.
+<br>4. Перейдем к новой ДПСК ­ <i>X&#8242;O&#8242;Y&#8242;</i> :
+<table><tbody><tr>
+<td align="CENTER" width="100%"><img src="./Пример выполнения типового расчета 1.7_files/ris1.7.56.JPG" align="MIDDLE">; ­ ­ ­ <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.57.JPG" align="MIDDLE"></td>
+<td align="RIGHT" width="20%">(7.12)</td>
+</tr></tbody></table> 	 							
+Тогда наше уравнение примет вид 
+<table><tbody><tr>
+<td align="CENTER" width="100%"><img src="./Пример выполнения типового расчета 1.7_files/ris1.7.58.JPG" align="MIDDLE"></td>
+<td align="RIGHT" width="20%">(7.13)</td>
+</tr></tbody></table> 	 							
+Теперь хорошо видно, что данное уравнение определяет гиперболу (см. III). Однако наша гипербола расположена относительно ДПСК ­ <i>X&#8242;O&#8242;Y&#8242;</i> не так, как изображено на рис. 7.2, а повернута на 90°, т.е. ее действительная ось – ось <i>OY</i>, а мнимая – <i>OX</i>.
+<br>5. Найдем <b><i>основные числовые характеристики гиперболы.
+<br>Действительная полуось</i></b><i> a</i> = 10. <b><i>Мнимая полуось</i></b>  <i>b</i> = 12.
+<br>Расстояние от центра до фокуса <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.59.JPG" align="MIDDLE">.
+<br>Эксиентриситет гиперболы &#949; = c/d = 1.56 &gt; 1.
+<br>6. Найдем координаты замечательных точек и уравнения замечательных прямых сначала в ДПСК ­ <i>X&#8242;O&#8242;Y&#8242;</i>, затем, пользуясь формулами (7.12), в данной ДПСК  ­ <i>XOY</i>.
+<br>a) <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.60.JPG" align="MIDDLE">
+<br>Следовательно, <b><i>координаты центра гиперболы</i></b><i> O'</i> в данной ДПСК ­ <i>XOY</i> будут (1,–1).
+<br>b) <b><i>Уравнения осей симметрии.</i></b> Как мы уже отмечали, наша гипербола имеет действительную ось – ось <i>O'Y'</i> : <i>x'</i> = 0 и мнимую ось – ось <i>O'X'</i> : <i>y'</i> = 0 . С учетом (7.12) <b><i>уравнение действительной оси</i></b><i> x </i>= 1, аналогично, <b><i>уравнение мнимой оси:</i></b><i> y</i> = –1. 
+<br>с) <i><b>Вершины</b></i>: 
+<br>В системе <i>X'O'Y'</i> 
+<br><img src="./Пример выполнения типового расчета 1.7_files/ris1.7.61.JPG" align="MIDDLE">, ­ ­ где  ­ ­ <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.62.JPG" align="MIDDLE">;
+<br><img src="./Пример выполнения типового расчета 1.7_files/ris1.7.63.JPG" align="MIDDLE">, ­  где  ­ <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.64.JPG" align="MIDDLE">;
+<br>отсюда, в системе <i>XOY</i>, &nbsp; <i>A</i><sub><font size="2">1</font></sub>
+(<i>X</i><sub><font size="2">1</font></sub>,<i>Y</i><sub><font size="2">1</font></sub>) = <i>A</i><sub><font size="2">1</font></sub>(1; –11), &nbsp; <i>A</i><sub><font size="2">2</font></sub>(<i>X</i><sub><font size="2">2</font></sub>, <i>Y</i><sub><font size="2">2</font></sub>) = <i>A</i><sub><font size="2">2</font></sub>(1; 9).
+<br>d)<b><i> Фокусы</i></b>. В системе <i>X'O'Y'</i> :
+<br><img src="./Пример выполнения типового расчета 1.7_files/ris1.7.65.JPG" align="MIDDLE">
+<br><img src="./Пример выполнения типового расчета 1.7_files/ris1.7.66.JPG" align="MIDDLE">
+<br>Отсюда в системе <i>XOY</i> :  ­ <i>F</i><sub><font size="2">1</font></sub>(–1;  –16,6); ­ <i>F</i><sub><font size="2">2</font></sub>(1;  14,6).
+<br>e) <b><i>Директрисы</i></b>.
+<br><img src="./Пример выполнения типового расчета 1.7_files/ris1.7.67.JPG" align="MIDDLE">
+<br><img src="./Пример выполнения типового расчета 1.7_files/ris1.7.68.JPG" align="MIDDLE">
+<br>­ <i>L</i><sub><font size="2">1</font></sub>­ : ­ <i>y</i> = –7,4; ­  ­ ­<i>L</i><sub><font size="2">2</font></sub>: <i>y</i> = 5,4.
+<br>f) <b><i>Асимптоты</i></b>.
+<br><img src="./Пример выполнения типового расчета 1.7_files/ris1.7.69.JPG" align="MIDDLE">.
+<br><i>x</i> – 1,2<i>y</i> – 2,2 = 0. 
+<br><img src="./Пример выполнения типового расчета 1.7_files/ris1.7.70.JPG" align="MIDDLE">.
+<br><i>x</i> + 1,2<i>y</i> + 0,2 = 0. 
+<br>­ <i>&#915;</i><sub><font size="2">1</font></sub>­ : ­ <i>x</i> – 1,2<i>y</i> – 2,2 = 0;  ­ ­ ­ 
+<i>­ &#915;</i><sub><font size="2">2</font></sub>­ : ­ <i>x</i> + 1,2<i>y</i> + 0,2 = 0.
+<br>7 <b><i>Сводка полученных результатов</i></b>
+<table border="1">
+<tbody><tr>
+<td align="CENTER">Данное уравнение кривой</td><td align="CENTER"> 25<i>x</i><sup><font size="2">2</font></sup> – 36<i>y</i><sup><font size="2">2</font></sup> – 50<i>x</i> – 72<i>y</i> + 3589 = 0</td></tr>
+<tr><td align="CENTER">Уравнение кривой относительно ДПСК  ­ <i>X'O'Y'</i>
+<br>(после параллельного переноса)</td><td align="CENTER"> <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.71.JPG"></td></tr>
+<tr><td align="CENTER">Название кривой</td><td align="CENTER">Гипербола</td></tr>
+<tr><td align="CENTER">Полуоси</td><td align="CENTER">Действительная полуось <i>a</i> = 10
+<br>Мнимая полуось <i>b</i> = 12</td></tr>
+<tr><td align="CENTER">Расстояние от центра до фокуса</td><td align="CENTER">
+<img src="./Пример выполнения типового расчета 1.7_files/ris1.7.72.JPG"></td></tr>
+<tr><td align="CENTER">Эксцентриситет</td><td align="CENTER"> <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.73.JPG"></td></tr>
+<tr><td align="CENTER">Связь между координатами точки (<i>X,Y</i> )<br> и (<i>X',Y'</i> )</td>
+<td align="CENTER"><img src="./Пример выполнения типового расчета 1.7_files/ris1.7.56.JPG" align="MIDDLE">;<img src="./Пример выполнения типового расчета 1.7_files/ris1.7.57.JPG" align="MIDDLE"></td></tr>
+</tbody></table>
+<p>
+<table border="1">
+<tbody><tr>
+<td align="CENTER"><b>ЗАМЕЧАТЕЛЬНЫЕ ТОЧКИ</b></td><td align="CENTER">Координаты в ДПСК  ­ <i>X'O'Y'</i></td><td align="CENTER">Координаты в ДПСК  ­ <i>XOY</i></td></tr>
+<tr>
+<td align="CENTER">Центр<i> O'</i></td><td align="CENTER">(0, 0)</td>
+<td align="CENTER">(1, –1)</td></tr>
+<tr>
+<td align="CENTER">Вершины<br><i>A</i><sub><font size="2">1</font></sub> <br><i>A</i><sub><font size="2">2</font></sub></td>
+<td align="CENTER">(0; –10)<br>(0; 10)</td><td align="CENTER">(1; –11)<br>(1; 9)</td></tr>
+<tr><td align="CENTER">Фокусы<br><i>F</i><sub><font size="2">1</font></sub>
+<br><i>F</i><sub><font size="2">2</font></sub></td>
+<td align="CENTER">(0; –15,6)<br>(0; 15,6)</td><td align="CENTER">(1; –16,6)<br>(1; 14,6)</td></tr>
+<tr>
+<td align="CENTER"><b>ЗАМЕЧАТЕЛЬНЫЕ ПРЯМЫЕ</b></td><td align="CENTER">Уравнение в ДПСК ­ <i>X'O'Y'</i></td><td align="CENTER">Уравнение в ДПСК ­ <i>XOY</i></td></tr>
+<tr>
+<td align="CENTER">Оси Действительная Мнимая<br> <br> </td><td align="CENTER"><br><i>x'</i> = 0<br><i>y'</i> = 0</td><td align="CENTER"><br><i>x</i> = +1<br><i>y</i> = –1</td></tr>
+<tr>
+<td align="CENTER">Директрисы<br><i>L</i><sub><font size="2">1</font></sub>
+<br><i>L</i><sub><font size="2">2</font></sub></td><td align="CENTER"><br><i>y'</i> = –6,4<br><i>y'</i> = 6,4</td><td align="CENTER"><br><i>y</i> = –7,4<br><i>y'</i> = 5,4</td></tr>
+<tr>
+<td align="CENTER">Асимптоты<br><i>&#915;</i><sub><font size="2">1</font></sub>
+<br><i>&#915;</i><sub><font size="2">2</font></sub></td>
+<td align="CENTER"><br><i>x'</i> = 1,2<i>y'</i><br><i>x'</i> = –1,2<i>y'</i></td>
+<td align="CENTER"><br><i>x</i> – 1,2<i>y</i> – 2,2 = 0
+<br><i>x</i> + 1,2<i>y</i> + 0,2 = 0</td></tr>
+</tbody></table>
+</p><p>8. На рисунке 7.4 изображена <b><i>гипербола.</i></b>
+<br></p><center><img src="./Пример выполнения типового расчета 1.7_files/Ris 7.4.JPG">
+<br> Рис. 7.4 Гипербола</center>
+<br><i><b>Задача 2.</b></i>
+<br>1.	По условию уравнение имеет вид 
+<br><i>y</i><sup><font size="2">2</font></sup> – 16<i>x</i> + 6<i>y</i> – 23 = 0.
+<br>2.	Так как <i>AB</i> = 0 ·1 = 0, то это уравнение параболического типа (см. 1, п.2); далее, так как <i>C</i> &#8800; 0 (см. 1, п. 2.1), то это уравнение определяет <u>параболу</u>.
+<br>3.	Выделим полный квадрат:
+<br>(<i>y</i><sup><font size="2">2</font></sup> + 6<i>y</i> + 9) = 16<i>x</i> + 23 + 9;  ­ 
+(<i>y</i> + 3)<sup><font size="2">2</font></sup> = 16(<i>x</i> + 2).
+<br>4.	Перейдем к новой ДПСК  ­ <i>X'O'Y'</i>
+<table><tbody><tr>
+<td align="CENTER" width="100%"><img src="./Пример выполнения типового расчета 1.7_files/ris1.7.74.JPG">  ­   ­ <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.75.JPG"></td>
+<td>(7.14)</td>
+</tr></tbody></table> 	 							
+тогда наше уравнение примет вид: (<i>y'</i>)<sup><font size="2">2</font></sup> = 
+16<i>x'</i>.
+<br>5.	Найдем <i><b>параметр</b></i>: 2<i>p</i> = 16, ­ <i>p</i> = 8.
+<br>6.	Найдем координаты замечательных точек и уравнения замечательных прямых:
+<br>а) <i><b>Вершина</b></i> <img src="./Пример выполнения типового расчета 1.7_files/ris1.7.76.JPG" align="MIDDLE">  ­  ­ (См. (14)).  ­  ­ <i>O'</i>(–2; –3). 
+<br>b)<i><b> Уравнение оси: ­  </b> y'</i> = 0,  ­ <i>y</i> + 3 = 0,  ­ т.е.  ­ <i>y</i> = –3.
+<br>c)<i><b> Координаты фокуса</b></i> <i>F</i>(<i>p</i>/2,0):
+<br><img src="./Пример выполнения типового расчета 1.7_files/ris1.7.77.JPG" align="MIDDLE"> <i>F</i>(2, –3).
+<br>d) <i><b>Уравнение директрисы</b></i>:  ­ <i>z</i> : ­  <i>X' = –p/2; ­ ­ X' = </i>–4; ­ ­ <i>X</i> + 2 = –4 ­ ­ или ­ ­ <i>X</i> = –6.
+<p> <b><i>Сводка полученных результатов</i></b>
+<table border="1">
+<tbody><tr>
+<td align="CENTER">Данное уравнение</td><td align="CENTER"> <i>y</i><sup><font size="2">2</font></sup> – 16<i>x</i> + 6<i>y</i> – 23 = 0 </td></tr>
+<tr>
+<td align="CENTER">Уравнение кривой относительно ДПСК  ­ <i>X'O'Y'</i>
+<br>(после параллельного переноса).</td><td align="CENTER">(<i>y'</i>)<sup><font size="2">2</font></sup> = 16<i>x'</i></td></tr>
+<tr>
+<td align="CENTER">Название кривой</td><td align="CENTER">Парабола</td></tr>
+<tr>
+<td align="CENTER">Параметр</td><td align="CENTER"><i>p</i> = 8</td></tr>
+<tr>
+<td align="CENTER">Эксцентриситет</td><td align="CENTER"><i>&#949;</i> = 1</td></tr>
+<tr>
+<td align="CENTER">Связь между координатами точки (<i>X,Y</i>) и (<i>X',Y'</i>)</td>
+<td align="CENTER"><img src="./Пример выполнения типового расчета 1.7_files/ris1.7.74.JPG"><img src="./Пример выполнения типового расчета 1.7_files/ris1.7.75.JPG"></td></tr>
+</tbody></table>
+</p><p>
+<table border="1">
+<tbody><tr>
+<td align="CENTER"><b>ЗАМЕЧАТЕЛЬНЫЕ ТОЧКИ</b></td><td align="CENTER">Координаты в ДПСК ­ <i>X'O'Y'</i></td><td align="CENTER">Координаты в ДПСК ­ <i>XOY</i></td></tr>
+<tr>
+<td align="CENTER">Вершина <i>O'</i></td><td align="CENTER">(0, 0)</td><td align="CENTER">(–2, –3)</td></tr>
+<tr>
+<td align="CENTER">Фокус <i>F</i></td><td align="CENTER">(4, 0)</td><td align="CENTER">(2, –3)</td></tr>
+<tr>
+<td align="CENTER"><b>ЗАМЕЧАТЕЛЬНЫЕ ПРЯМЫЕ</b></td><td align="CENTER">Уравнение в ДПСК ­ <i>X'O'Y'</i></td><td align="CENTER">Уравнение в ДПСК ­ <i>XOY</i></td></tr>
+<tr>
+<td align="CENTER">Ось</td><td align="CENTER"><i>y'</i> = 0</td>
+<td align="CENTER"><i>y</i> = 3</td></tr>
+<tr>
+<td align="CENTER">Директриса</td><td align="CENTER"><i>x'</i> = –4</td>
+<td align="CENTER"><i>x'</i> = –6</td></tr>
+</tbody></table>
+</p><p>8. На рисунке 7.5 изображена <b><i>парабола</i></b>.
+<br></p><center><img src="./Пример выполнения типового расчета 1.7_files/Ris 7.5.JPG">
+<br> Рис. 7.5 Парабола</center>
+<br><i><b>Задача 3.</b></i>
+<br>1.	По условию уравнение имеет вид: 
+<br>2<i>x</i><sup><font size="2">2</font></sup> + 3<i>y</i><sup><font size="2">2</font></sup> – 12<i>x</i> + 6<i>y</i> + 21 = 0.
+<br>2. Так как <i>A · B</i> = 2 · 3 &gt; 0, то уравнение эллиптического типа (см. 1, п. 1.1), следовательно, оно может определять либо эллипс, либо пустое множество (мнимый эллипс), либо точку.
+<br>3. Выделим полные квадраты:
+<br>2(<i>x</i><sup><font size="2">2</font></sup> – 6<i>x</i> + 9) + 
+3(<i>y</i><sup><font size="2">2</font></sup> + 2<i>y</i> + 1) – 18 – 3 +21 = 0;
+<br>2(<i>x</i> – 3)<sup><font size="2">2</font></sup> + 
+3(<i>y</i> + 1)<sup><font size="2">2</font></sup> = 0.
+<br><b><i>Точка с координатами </i></b> (3, –1)
+<br><b><i>Замечание.</i></b> Мы ограничились разбором решения только трех задач, однако это дает представление о выполнении работы в целом.
+<h3>7.5 Порядок оформления работы</h3>
+1.	Все результаты каждой задачи должна быть сведены в таблицу, как это сделано в примерах. Таблица должна содержать каноническое уравнение и название кривой, основные числовые характеристики кривой (полуоси, расстояние от центра до фокусов, параметр, эксцентриситет), формулы, связывающие координаты точки относительно рассматриваемых ДПСК, координаты замечательных точек (центра, вершин, фокусов) и уравнения замечательных прямых (осей симметрии, директрис, асимптот) относительно всех рассматриваемых ДПСК.
+<br>2.	Если рассматриваемая кривая – эллипс, то нужно сформулировать его основные замечательные свойства: фокальное, директориальное и оптическое, аналогично для гиперболы и параболы.
+<br>3.	Решение задачи завершается аккуратно сделанным рисунком кривой <u>в данной ДПСК</u>.
+<br>В заключение отметим, что работа должна содержать не только ответы на вопросы, поставленная в задании, но и все вычисления, на основании которых сделаны выводы.
+
+
+
+
+</body></html>
