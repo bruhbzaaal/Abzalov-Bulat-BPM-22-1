@@ -1,0 +1,108 @@
+#include <iostream>
+#define M_PI  3.14
+
+
+struct Rdec2D {
+	double x = 0.0;
+	double y = 0.0;
+};
+
+std::ostream& operator<<(
+	std::ostream& ostrm,
+	const Rdec2D& p
+	) {
+	return ostrm << '(' << p.x << ',' << p.y << ')';
+}
+
+Rdec2D operator+=(Rdec2D& lhs, const Rdec2D& rhs) {
+	lhs.x += rhs.x;
+	lhs.y += rhs.y;
+	return lhs;
+}
+
+
+ Rdec2D operator+(const Rdec2D& lhs, const Rdec2D& rhs) {
+	Rdec2D res = lhs;
+	res += rhs;
+	return res;
+} 
+
+ Rdec2D operator-=(Rdec2D& lhs, const Rdec2D& rhs) {
+	 lhs.x -= rhs.x;
+	 lhs.y -= rhs.y;
+	 return lhs;
+ }
+
+ Rdec2D operator-(const Rdec2D& lhs, const Rdec2D& rhs) {
+	 Rdec2D res = lhs;
+	 res -= rhs;
+	 return res;
+ }
+
+ Rdec2D operator*=(Rdec2D& lhs, const Rdec2D& rhs) {
+	 lhs.x *= rhs.x;
+	 lhs.y *= rhs.y;
+	 return lhs;
+ }
+
+ Rdec2D operator*(const Rdec2D& lhs, const Rdec2D& rhs) {
+	 Rdec2D res = lhs;
+	 res *= rhs;
+	 return res;
+ }
+
+ Rdec2D norm(const Rdec2D& lhs) {
+	 Rdec2D res = lhs;
+	 res *= lhs;
+	 return res;
+ }
+
+ struct Rpol2D {
+	 double rad = 0.0;
+	 double phi = 0.0;
+ };
+
+ std::ostream& operator<<(
+	 std::ostream& ostrm,
+	 const Rpol2D& v
+	 ) {
+	 return ostrm << '(' << v.rad << ',' << v.phi << ')';
+ }
+
+
+
+
+int main() {
+	Rdec2D p{};
+	Rdec2D p1{ 3.0, 1.0 };
+	Rdec2D p2{ 2.0, 2.0 };
+	Rpol2D v1{ 1.0, M_PI / 4 };
+	
+	// std::cout << "p = " << p << '\n';
+
+	// p1 += p2;
+	// std::cout << "p1 += p2 = " << p1 << std::endl;
+
+	// auto p3 = p1 + p2;
+	// std::cout << "p1 + p2 = " << p3 << '\n';
+
+	// p1 -= p2;
+	// std::cout << "p1 -= p2 = " << p1 << std::endl;
+
+	// auto p3 = p1 - p2;
+	// std::cout << "p1 - p2 = " << p3;
+
+	// p1 *= p2;
+	// std::cout << "p1 *= p2 = " << p1;
+
+	// auto p3 = p1 * p2;
+	// std::cout << "p1 * p2 = " << p3 << '\n';
+
+	// auto r = norm(p1);
+	// std::cout << "r(p1) = " << r;
+
+	// std::cout << v1 << '\n';
+
+	
+	
+}
