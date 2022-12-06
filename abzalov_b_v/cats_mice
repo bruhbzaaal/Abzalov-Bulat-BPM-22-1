@@ -1,0 +1,188 @@
+#include <iostream>
+#include <cmath>
+#define M_PI  3.14
+
+
+struct Rdec2D {
+	double x = 0.0;
+	double y = 0.0;
+};
+
+std::ostream& operator<<(
+	std::ostream& ostrm,
+	const Rdec2D& p
+	) {
+	return ostrm << '(' << p.x << ',' << p.y << ')';
+}
+
+Rdec2D operator+=(Rdec2D& lhs, const Rdec2D& rhs) {
+	lhs.x += rhs.x;
+	lhs.y += rhs.y;
+	return lhs;
+}
+
+
+ Rdec2D operator+(const Rdec2D& lhs, const Rdec2D& rhs) {
+	Rdec2D res = lhs;
+	res += rhs;
+	return res;
+} 
+
+ Rdec2D operator-=(Rdec2D& lhs, const Rdec2D& rhs) {
+	 lhs.x -= rhs.x;
+	 lhs.y -= rhs.y;
+	 return lhs;
+ }
+
+ Rdec2D operator-(const Rdec2D& lhs, const Rdec2D& rhs) {
+	 Rdec2D res = lhs;
+	 res -= rhs;
+	 return res;
+ }
+
+ Rdec2D operator*=(Rdec2D& lhs, const Rdec2D& rhs) {
+	 lhs.x *= rhs.x;
+	 lhs.y *= rhs.y;
+	 return lhs;
+ }
+ 
+ Rdec2D operator*=(Rdec2D& lhs, double a) {
+	 lhs.x *= a;
+	 lhs.y *= a;
+	 Rdec2D res = lhs;
+	 return res;
+ }
+
+ Rdec2D operator*(const Rdec2D& lhs, double a) {
+	 Rdec2D res = lhs;
+	 res *= a;
+	 return res;
+ }
+ 
+ Rdec2D operator/=(Rdec2D& lhs, double a) {
+	 lhs.x /= a;
+	 lhs.y /= a;
+	 Rdec2D res = lhs;
+	 return res;
+ } 
+
+ Rdec2D operator/(const Rdec2D& lhs, double a) {
+	 Rdec2D res = lhs;
+	 res /= a;
+	 return res;
+ }
+ 
+ bool operator!=(const Rdec2D& lhs, const Rdec2D& rhs) {
+	 if (abs(lhs.x - rhs.x) <= 0.0001 && abs(lhs.y - rhs.y) <= 0.0001) {
+		 return false;
+	 }
+	 else {
+		 return true;
+	 }
+ } 
+
+ bool operator==(const Rdec2D& lhs, const Rdec2D& rhs) {
+	 if (abs(lhs.x - rhs.x) <= 0.0001 && abs(lhs.y - rhs.y) <= 0.0001) {
+		 return true;
+	 }
+	 else {
+		 return false;
+	 }
+ }
+
+ Rdec2D v_c_ch(Rdec2D& lhs, Rdec2D& rhs, Rdec2D& m_speed) {
+	 double a;
+	 a = lhs.x * lhs.x + lhs.y * lhs.y;
+	 double del = m_speed.y * 0.1;
+	 if (lhs.y - rhs.y > 0) {
+		 lhs.y = lhs.y - del;
+	 }
+	 else {
+		 lhs.y += del;
+	 }
+	 lhs.x = sqrt(a - lhs.y * lhs.y);
+	 return lhs;
+ }
+
+ Rdec2D dot(const Rdec2D& lhs, const Rdec2D& rhs) {
+	 Rdec2D res = lhs;
+	 res *= rhs;
+	 return res;
+ }
+
+ double norm(const Rdec2D& lhs) {
+	 Rdec2D cop = lhs;
+	 cop.x *= cop.x;
+	 cop.y *= cop.y;
+	 double res = sqrt(cop.x + cop.y);
+	 return res;
+ }
+
+ 
+
+ struct Rpol2D {
+	 double rad = 0.0;
+	 double phi = 0.0;
+ };
+
+ std::ostream& operator<<(
+	 std::ostream& ostrm,
+	 const Rpol2D& v
+	 ) {
+	 return ostrm << '(' << v.rad << ',' << v.phi << ')';
+ }
+
+ Rpol2D ToPol(Rdec2D vector) {
+	 double r = std::sqrt(vector.x * vector.x + vector.y * vector.y);
+	 double phi = std::asin(vector.y / r);
+	 Rpol2D new_vector{ r, phi };
+	 return new_vector;
+ }
+
+
+ int main() {
+     
+	 Rdec2D r_m{ 0.0, 10.0 }; //координаты мышки, заданные вектором
+	 Rdec2D v_m{ 0.0, -2.0 }; //скорость мышки, заданная вектором
+	 Rdec2D r_c{ 20.0, 0.0 }; //координаты кошки, заданные вектором
+	 Rdec2D v_c{ -3.7, 2.0 }; //скорость кошки, заданная вектором
+	 Rdec2D n = r_m - r_c;
+	 Rdec2D cop_n = n;
+	 double r = norm(n);
+	 double k_c = 1.0;
+	 int flag = 0;
+	 double dt = 0;
+	 double norm_v_c = norm(v_c);
+	
+	 for (int j = 1; j > 0; ++j) {
+		 dt += 0.01;
+		 r_m += v_m * 0.01;
+		 std::cout << r_m << std::endl;
+		 Rdec2D delta_v_c = (r_m - r_c) / norm(r_m - r_c) * norm_v_c;
+		 r_c += delta_v_c*0.01;
+		 cop_n = n;
+		 n = r_m - r_c;
+		 if (j % 200 == 0 && norm(n) - norm(cop_n) > 0) {
+			 std::cout << "Cat will never catch a mouse";
+			 flag = -1;
+			 break;
+		 }
+		 r = norm(n);
+		 if (r <= k_c) {
+			 flag = 1;
+			 break;
+		 }
+		 if (r_m.y <= 0) {
+			 break;
+		 }
+	 }
+	 if (flag == 1) {
+		 std::cout << "Cat will catch a mouse in " << dt << " seconds at {" << r_m.x << ';' << r_m.y << '}';
+	 }
+	 if (flag == 0) {
+		 std::cout << "Mouse will hide";
+	 }
+
+
+
+ }
