@@ -1,0 +1,185 @@
+#include <iostream>
+#include <cmath>
+#define M_PI  3.14
+
+
+struct Rdec2D {
+	double x = 0.0;
+	double y = 0.0;
+};
+
+std::ostream& operator<<(
+	std::ostream& ostrm,
+	const Rdec2D& p
+	) {
+	return ostrm << '(' << p.x << ',' << p.y << ')';
+}
+
+Rdec2D operator+=(Rdec2D& lhs, const Rdec2D& rhs) {
+	lhs.x += rhs.x;
+	lhs.y += rhs.y;
+	return lhs;
+}
+
+
+Rdec2D operator+(const Rdec2D& lhs, const Rdec2D& rhs) {
+	Rdec2D res = lhs;
+	res += rhs;
+	return res;
+}
+
+Rdec2D operator-=(Rdec2D& lhs, const Rdec2D& rhs) {
+	lhs.x -= rhs.x;
+	lhs.y -= rhs.y;
+	return lhs;
+}
+
+Rdec2D operator-(const Rdec2D& lhs, const Rdec2D& rhs) {
+	Rdec2D res = lhs;
+	res -= rhs;
+	return res;
+}
+
+Rdec2D operator*=(Rdec2D& lhs, const Rdec2D& rhs) {
+	lhs.x *= rhs.x;
+	lhs.y *= rhs.y;
+	return lhs;
+}
+
+Rdec2D operator*=(Rdec2D& lhs, double a) {
+	lhs.x *= a;
+	lhs.y *= a;
+	Rdec2D res = lhs;
+	return res;
+}
+
+Rdec2D operator*(const Rdec2D& lhs, double a) {
+	Rdec2D res = lhs;
+	res *= a;
+	return res;
+}
+
+Rdec2D operator/=(Rdec2D& lhs, double a) {
+	lhs.x /= a;
+	lhs.y /= a;
+	Rdec2D res = lhs;
+	return res;
+}
+
+Rdec2D operator/(const Rdec2D& lhs, double a) {
+	Rdec2D res = lhs;
+	res /= a;
+	return res;
+}
+
+bool operator!=(const Rdec2D& lhs, const Rdec2D& rhs) {
+	if (abs(lhs.x - rhs.x) <= 0.0001 && abs(lhs.y - rhs.y) <= 0.0001) {
+		return false;
+	}
+	else {
+		return true;
+	}
+}
+
+bool operator==(const Rdec2D& lhs, const Rdec2D& rhs) {
+	if (abs(lhs.x - rhs.x) <= 0.0001 && abs(lhs.y - rhs.y) <= 0.0001) {
+		return true;
+	}
+	else {
+		return false;
+	}
+}
+
+Rdec2D v_c_ch(Rdec2D& lhs, Rdec2D& rhs, Rdec2D& m_speed) {
+	double a;
+	a = lhs.x * lhs.x + lhs.y * lhs.y;
+	double del = m_speed.y * 0.1;
+	if (lhs.y - rhs.y > 0) {
+		lhs.y = lhs.y - del;
+	}
+	else {
+		lhs.y += del;
+	}
+	lhs.x = sqrt(a - lhs.y * lhs.y);
+	return lhs;
+}
+
+Rdec2D dot(const Rdec2D& lhs, const Rdec2D& rhs) {
+	Rdec2D res = lhs;
+	res *= rhs;
+	return res;
+}
+
+double norm(const Rdec2D& lhs) {
+	Rdec2D cop = lhs;
+	cop.x *= cop.x;
+	cop.y *= cop.y;
+	double res = sqrt(cop.x + cop.y);
+	return res;
+}
+
+
+
+struct Rpol2D {
+	double rad = 0.0;
+	double phi = 0.0;
+};
+
+std::ostream& operator<<(
+	std::ostream& ostrm,
+	const Rpol2D& v
+	) {
+	return ostrm << '(' << v.rad << ',' << v.phi << ')';
+}
+
+Rpol2D ToPol(Rdec2D vector) {
+	double r = std::sqrt(vector.x * vector.x + vector.y * vector.y);
+	double phi = std::asin(vector.y / r);
+	Rpol2D new_vector{ r, phi };
+	return new_vector;
+}
+
+int main() {
+	Rdec2D gun_1{ 2.0, 2.0 }; //координаты первой пушки
+	Rdec2D gun_2{ 200.0, 5.0 }; //координаты второй пушки
+	Rdec2D speed_1{ 50.0, 50.0 }; //скорость первой пушки (м/с)
+	Rdec2D speed_2{ -49.0, 107.0 }; //скорость второй пушки (м/с)
+
+	double d_t = norm(gun_2 - gun_1)/100; //задержка по времени между первым и вторым выстрелом (с)
+	std::cout << "Time delta = " << d_t << std::endl;
+	const double g = 9.8; //ускорение свободного падения на Земле (м/с**2)
+	int t = 0; //время с выстрела из второй пушки
+	
+	double x1 = gun_1.x + speed_1.x * (t + d_t); //уравнение движения первого ядра по оси Х
+	double y1 = gun_1.y + speed_1.y * (t + d_t) - g * pow((t + d_t), 2) * 0.5; //уравнение движения первого ядра по оси Y
+
+	double x2 = gun_2.x + speed_2.x * t; //уравнение движения второго ядра по оси Х
+	double y2 = gun_2.y + speed_2.y * t - g * t * t * 0.5;
+	
+	int flag = 0;
+	double eps = 1.0;
+
+	for (int i = 1; i > 0; ++i) {
+		t += 1;
+		std::cout << "At time " << t << std::endl;
+
+		x1 = gun_1.x + speed_1.x * (t + d_t);
+		y1 = gun_1.y + speed_1.y * (t + d_t) - g * pow((t + d_t), 2) * 0.5; 
+		std::cout << "Core 1 {" << x1 << ',' << y1 << '}' << " ";
+		
+		x2 = gun_2.x + speed_2.x * t; 
+		y2 = gun_2.y + speed_2.y * t - g * t * t * 0.5;
+		std::cout << "Core 2 {" << x2 << ',' << y2 << '}' << std::endl;
+
+		Rdec2D r{ x1 - x2, y1 - y2 };
+		if (norm(r) < eps) {
+			std::cout << "Collision in " << x1 << " " << y1 << std::endl;
+			flag = -1;
+			break;
+		}
+		if (y1 <= 0 || y2 <= 0) {
+			std::cout << "No collision" << std::endl;
+			break;
+		}
+	}
+}
