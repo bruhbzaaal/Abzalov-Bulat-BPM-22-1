@@ -7,10 +7,22 @@ struct Rdec2D {
 	double y = 0.0;
 };
 
+struct Rpol2D {
+	double r = 0;
+	double phi = 0;
+};
+
+std::ostream& operator<<(std::ostream& out, const Rpol2D& point);
+
+
 std::ostream& operator<<(
 	std::ostream& ostrm,
 	const Rdec2D& p
 	);
+
+Rdec2D ToDec(Rpol2D vector);
+
+Rpol2D ToPol(Rdec2D vector);
 
 Rdec2D operator+=(Rdec2D& lhs, const Rdec2D& rhs);
 
